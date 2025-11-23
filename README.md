@@ -68,6 +68,19 @@ docker run --rm -it \
   game-logs-processor bash -lc "python main.py"
 ```
 
+## Запуск тестов (Docker)
+Тесты написаны на `unittest` для Python 2.7. Выполните их внутри собранного
+контейнера, пробросив каталог с данными и файлом логов, как и при запуске
+приложения:
+
+```bash
+  touch app.log
+docker run --rm -it \
+  -v "$(pwd)/data:/app/data" \
+  -v "$(pwd)/app.log:/app/app.log" \
+  game-logs-processor bash -lc "python -m unittest discover -s tests"
+```
+
 ## Альтернативный локальный запуск
 Если Docker недоступен, тот же сценарий можно выполнить напрямую в установленном
 Python 2.7.18. 
