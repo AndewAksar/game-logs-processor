@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 from __future__ import unicode_literals
 
+import io
 import unittest
 
 from src.report import (
@@ -8,8 +9,10 @@ from src.report import (
     _last_items,
     _top_items_by_mentions,
     _top_players_by_money,
+    interactive_loop,
 )
-from src.state import ItemStatistics, Player
+from src.state import GameState, ItemStatistics, Player, PlayerRegistry
+
 
 
 class ReportHelperTests(unittest.TestCase):
@@ -64,6 +67,75 @@ class ReportHelperTests(unittest.TestCase):
         self.assertEqual(
             [(2, "Shield", 1700000001), (6, "unknown item 6", 1700000003)],
             last_items,
+        )
+
+
+class InteractiveLoopTests(unittest.TestCase):
+    def setUp(self):
+        registry = PlayerRegistry(
+            {
+                1: Player(1, name="Alice"),
+                2: Player(2, name="Bob"),
+                3: Player(3, name="Charlie"),
+            }
+        )
+
+        registry.get(1).inventory[100] = 5
+        registry.get(2).inventory[100] = 3
+        registry.get(3).inventory[100] = 1
+
+        stats = ItemStatistics()
+        stats.totals[100] = 9
+        stats.owner_counts[100] = 3
+
+        self.game_state = GameState(registry, stats)
+        self.catalog = {100: "Magic Sword"}
+
+    def test_interactive_loop_outputs_stats_for_valid_item(self):
+        output = io.StringIO()
+        interactive_loop(
+            self.game_state,
+            self.catalog,
+            input_stream=io.StringIO("100\n"),
+            output_stream=output,
+        )
+
+        lines = output.getvalue().splitlines()
+        self.assertEqual(
+            [
+                "Название предмета: Magic Sword",
+                "Общее количество в игре: 9",
+                "Количество владельцев: 3",
+                "Топ 10 игроков по предмету:",
+                "Alice, 5",
+                "Bob, 3",
+                "Charlie, 1",
+            ],
+            lines,
+        )
+
+    def test_interactive_loop_handles_non_numeric_and_continues(self):
+        output = io.StringIO()
+        interactive_loop(
+            self.game_state,
+            self.catalog,
+            input_stream=io.StringIO("abc\n100\n"),
+            output_stream=output,
+        )
+
+        lines = output.getvalue().splitlines()
+        self.assertEqual(
+            [
+                "Некорректный item_type_id: abc",
+                "Название предмета: Magic Sword",
+                "Общее количество в игре: 9",
+                "Количество владельцев: 3",
+                "Топ 10 игроков по предмету:",
+                "Alice, 5",
+                "Bob, 3",
+                "Charlie, 1",
+            ],
+            lines,
         )
 
 
